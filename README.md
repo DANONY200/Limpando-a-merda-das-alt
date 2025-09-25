@@ -1,3 +1,3 @@
-# Limpando-a-merda-das-alt
+# limpando-a-merda-das-alt
 
-tura tudo q nao e o email:senha
+remove tudo q não é o email:senha
