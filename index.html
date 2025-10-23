@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extrator de Contas Minecraft by danony</title>
     <style>
+        /* Melhor prática: resetar box-sizing */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #1e1e1e;
@@ -16,26 +23,29 @@
             align-items: flex-start;
             min-height: 100vh;
         }
+
         .container {
             width: 100%;
             max-width: 900px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px; /* Aumentado o gap principal para melhor espaçamento */
         }
+
         h1 {
             text-align: center;
             color: #56a85a;
-            margin-bottom: 5px;
+            margin: 0; /* Removido margin padrão */
         }
+
         .creator-name {
             text-align: center;
             font-size: 26px;
             font-weight: bold;
             animation: rgb-animation 4s linear infinite;
-            margin-top: -5px;
-            margin-bottom: 15px;
+            margin: -5px 0 0 0; /* Ajustado margin */
         }
+
         @keyframes rgb-animation {
             0% { color: #ff0000; }
             15% { color: #ff7f00; }
@@ -46,16 +56,25 @@
             90% { color: #8b00ff; }
             100% { color: #ff0000; }
         }
+
         p {
             text-align: center;
-            margin-top: 0;
+            margin: 0; /* Removido margin padrão */
             color: #999;
         }
+
+        /* Agrupador para label + textarea */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* Espaçamento entre label e textarea */
+        }
+
         label {
             font-weight: bold;
             color: #ccc;
-            margin-bottom: -5px;
         }
+
         textarea {
             width: 100%;
             padding: 12px;
@@ -63,30 +82,58 @@
             border: 1px solid #444;
             background-color: #2a2a2a;
             color: #d4d4d4;
+            font-family: inherit; /* Garante que a fonte seja a mesma do body */
             font-size: 14px;
-            box-sizing: border-box;
             resize: vertical;
             min-height: 200px;
         }
+
         textarea:focus {
             outline: none;
             border-color: #56a85a;
             box-shadow: 0 0 8px #56a85a66;
         }
+
+        /* Agrupador para botões */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap; /* Permite que os botões quebrem a linha em telas menores */
+        }
+
         button {
             padding: 12px 20px;
             font-size: 16px;
             font-weight: bold;
             color: #ffffff;
-            background-color: #56a85a;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            flex-grow: 1; /* Faz os botões crescerem para preencher o espaço */
         }
+
         button:hover {
-            background-color: #4a934e;
+            opacity: 0.9;
         }
+
+        button:active {
+            transform: scale(0.98); /* Efeito de clique */
+        }
+
+        #extractButton {
+            background-color: #56a85a;
+        }
+
+        #copyButton {
+            background-color: #3e85c9; /* Cor diferente para ação secundária */
+        }
+
+        #clearButton {
+            background-color: #c93e3e; /* Cor destrutiva */
+            flex-grow: 0; /* O botão de limpar não precisa crescer tanto */
+        }
+
     </style>
 </head>
 <body>
@@ -94,29 +141,87 @@
         <h1>Extrator de Contas Minecraft</h1>
         <h2 class="creator-name">danony</h2>
         <p>Esta ferramenta extrai <strong>apenas</strong> o "email:senha" de cada linha e ignora todo o resto.</p>
-        <label for="inputText">Sua Lista (Entrada):</label>
-        <textarea id="inputText" placeholder="[1][Microsoft_Hit][MC][Banned][email@exemplo.com:senha123]..."></textarea>
-        <button id="cleanButton">Extrair Contas</button>
-        <label for="outputText">Contas Extraídas (Saída):</label>
-        <textarea id="outputText" readonly placeholder="O resultado limpo aparecerá aqui."></textarea>
+        
+        <div class="input-group">
+            <label for="inputText">Sua Lista (Entrada):</label>
+            <textarea id="inputText" placeholder="[1][Microsoft_Hit][MC][Banned][email@exemplo.com:senha123]..."></textarea>
+        </div>
+
+        <div class="button-group">
+            <button id="extractButton">Extrair Contas</button>
+            <button id="copyButton">Copiar Saída</button>
+            <button id="clearButton">Limpar</button>
+        </div>
+
+        <div class="input-group">
+            <label for="outputText">Contas Extraídas (Saída):</label>
+            <textarea id="outputText" readonly placeholder="O resultado limpo aparecerá aqui."></textarea>
+        </div>
     </div>
+
     <script>
-        document.getElementById('cleanButton').addEventListener('click', function() {
-            const inputText = document.getElementById('inputText').value;
-            if (!inputText) {
-                document.getElementById('outputText').value = 'Nenhuma lista inserida.';
-                return;
-            }
-            const linhas = inputText.split('\n');
-            const credenciaisEncontradas = [];
-            const credencialRegex = /[\w\.\-]+@[\w\.\-]+\:[^\s\[\|]+/;
-            for (const linha of linhas) {
-                const match = linha.match(credencialRegex);
-                if (match) {
-                    credenciaisEncontradas.push(match[0]);
+        // Espera o DOM carregar para garantir que os elementos existam
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // Seleciona os elementos uma vez
+            const extractButton = document.getElementById('extractButton');
+            const copyButton = document.getElementById('copyButton');
+            const clearButton = document.getElementById('clearButton');
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+
+            // Regex melhorada:
+            // 1. Procura por um TLD (ex: .com) mais explícito: \.[a-zA-Z]{2,}
+            // 2. Usa a flag global /g para encontrar TODAS as ocorrências no texto de uma vez
+            const credencialRegex = /[\w\.\-]+@[\w\.\-]+\.[a-zA-Z]{2,}:[^\s\[\|]+/g;
+
+            // --- Função de Extração ---
+            extractButton.addEventListener('click', function() {
+                const text = inputText.value;
+                if (!text) {
+                    outputText.value = 'Nenhuma lista inserida.';
+                    return;
                 }
-            }
-            document.getElementById('outputText').value = credenciaisEncontradas.join('\n');
+
+                // Usa .match() com a regex global. 
+                // Isso é MAIS EFICIENTE do que split('\n') e iterar linha por linha.
+                const matches = text.match(credencialRegex);
+
+                if (matches && matches.length > 0) {
+                    // .join('\n') para formatar a saída
+                    outputText.value = matches.join('\n');
+                } else {
+                    outputText.value = 'Nenhuma credencial válida encontrada no formato email:senha.';
+                }
+            });
+
+            // --- Função de Cópia ---
+            copyButton.addEventListener('click', function() {
+                const textToCopy = outputText.value;
+                if (!textToCopy || textToCopy.startsWith('Nenhuma')) {
+                    copyButton.textContent = 'Nada para copiar!';
+                } else {
+                    // API moderna de Área de Transferência (mais segura)
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        copyButton.textContent = 'Copiado! 👍';
+                    }, function(err) {
+                        copyButton.textContent = 'Falha ao copiar';
+                        console.error('Erro ao copiar: ', err);
+                    });
+                }
+
+                // Reseta o texto do botão após 2 segundos
+                setTimeout(() => {
+                    copyButton.textContent = 'Copiar Saída';
+                }, 2000);
+            });
+
+            // --- Função de Limpar ---
+            clearButton.addEventListener('click', function() {
+                inputText.value = '';
+                outputText.value = '';
+            });
+
         });
     </script>
 </body>
